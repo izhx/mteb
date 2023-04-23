@@ -29,8 +29,9 @@ class RerankingEvaluator(Evaluator):
         mrr_at_k: int = 10,
         name: str = "",
         similarity_fct=cos_sim,
-        batch_size: int = 512,
-        use_batched_encoding: bool = True,
+        batch_size: int = 128,
+        use_chunked_encoding: bool = True,
+        chunk_size: int = 1500,
         limit: int = None,
         **kwargs,
     ):
@@ -42,7 +43,8 @@ class RerankingEvaluator(Evaluator):
         self.mrr_at_k = mrr_at_k
         self.similarity_fct = similarity_fct
         self.batch_size = batch_size
-        self.use_batched_encoding = use_batched_encoding
+        self.use_chunked_encoding = use_chunked_encoding
+        self.chunk_size = chunk_size
 
         if isinstance(self.samples, dict):
             self.samples = list(self.samples.values())
@@ -58,62 +60,69 @@ class RerankingEvaluator(Evaluator):
 
     def compute_metrics(self, model):
         return (
-            self.compute_metrics_batched(model)
-            if self.use_batched_encoding
+            self.compute_metrics_chunked(model)
+            if self.use_chunked_encoding
             else self.compute_metrics_individual(model)
         )
 
-    def compute_metrics_batched(self, model):
+    def compute_metrics_chunked(self, model):
         """
         Computes the metrices in a batched way, by batching all queries and
-        all documents together
+        all documents into chunks.
         """
         all_mrr_scores = []
         all_ap_scores = []
 
-        logger.info("Encoding queries...")
-        if isinstance(self.samples[0]["query"], str):
-            all_query_embs = model.encode(
-                [sample["query"] for sample in self.samples],
-                convert_to_tensor=True,
-                batch_size=self.batch_size,
-            )
-        elif isinstance(self.samples[0]["query"], list):
-            # In case the query is a list of strings, we get the most similar embedding to any of the queries
-            all_query_flattened = [q for sample in self.samples for q in sample["query"]]
-            all_query_embs = model.encode(all_query_flattened, convert_to_tensor=True, batch_size=self.batch_size)
-        else:
-            raise ValueError(f"Query must be a string or a list of strings but is {type(self.samples[0]['query'])}")
+        for n, i in enumerate(range(0, len(self.samples), self.chunk_size)):
+            chunked_samples = self.samples[i : i + self.chunk_size]
+            logger.info(f"Processing no.{n} chunk with {len(chunked_samples)} examples...")
 
-        logger.info("Encoding candidates...")
-        all_docs = []
-        for sample in self.samples:
-            all_docs.extend(sample["positive"])
-            all_docs.extend(sample["negative"])
+            if isinstance(chunked_samples[0]["query"], str):
+                logger.info(f"Encoding {len(chunked_samples)} queries...")
+                all_query_embs = model.encode(
+                    [sample["query"] for sample in chunked_samples],
+                    convert_to_tensor=True,
+                    batch_size=self.batch_size,
+                )
+            elif isinstance(chunked_samples[0]["query"], list):
+                # In case the query is a list of strings, we get the most similar embedding to any of the queries
+                all_query_flattened = [q for sample in chunked_samples for q in sample["query"]]
+                logger.info(f"Encoding flattened {len(all_query_flattened)} queries...")
+                all_query_embs = model.encode(all_query_flattened, convert_to_tensor=True, batch_size=self.batch_size)
+            else:
+                raise ValueError(
+                    f"Query must be a string or a list of strings but is {type(chunked_samples[0]['query'])}"
+                )
 
-        all_docs_embs = model.encode(all_docs, convert_to_tensor=True, batch_size=self.batch_size)
+            all_docs = []
+            for sample in chunked_samples:
+                all_docs.extend(sample["positive"])
+                all_docs.extend(sample["negative"])
 
-        # Compute scores
-        logger.info("Evaluating...")
-        query_idx, docs_idx = 0, 0
-        for instance in self.samples:
-            num_subqueries = len(instance["query"]) if isinstance(instance["query"], list) else 1
-            query_emb = all_query_embs[query_idx : query_idx + num_subqueries]
-            query_idx += num_subqueries
+            logger.info(f"Encoding {len(all_docs)} candidates...")
+            all_docs_embs = model.encode(all_docs, convert_to_tensor=True, batch_size=self.batch_size)
 
-            num_pos = len(instance["positive"])
-            num_neg = len(instance["negative"])
-            docs_emb = all_docs_embs[docs_idx : docs_idx + num_pos + num_neg]
-            docs_idx += num_pos + num_neg
+            # Compute scores
+            logger.info("Evaluating...")
+            query_idx, docs_idx = 0, 0
+            for instance in chunked_samples:
+                num_subqueries = len(instance["query"]) if isinstance(instance["query"], list) else 1
+                query_emb = all_query_embs[query_idx : query_idx + num_subqueries]
+                query_idx += num_subqueries
 
-            if num_pos == 0 or num_neg == 0:
-                continue
+                num_pos = len(instance["positive"])
+                num_neg = len(instance["negative"])
+                docs_emb = all_docs_embs[docs_idx : docs_idx + num_pos + num_neg]
+                docs_idx += num_pos + num_neg
 
-            is_relevant = [True] * num_pos + [False] * num_neg
+                if num_pos == 0 or num_neg == 0:
+                    continue
 
-            scores = self._compute_metrics_instance(query_emb, docs_emb, is_relevant)
-            all_mrr_scores.append(scores["mrr"])
-            all_ap_scores.append(scores["ap"])
+                is_relevant = [True] * num_pos + [False] * num_neg
+
+                scores = self._compute_metrics_instance(query_emb, docs_emb, is_relevant)
+                all_mrr_scores.append(scores["mrr"])
+                all_ap_scores.append(scores["ap"])
 
         mean_ap = np.mean(all_ap_scores)
         mean_mrr = np.mean(all_mrr_scores)
