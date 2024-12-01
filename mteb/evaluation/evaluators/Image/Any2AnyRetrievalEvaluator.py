@@ -36,7 +36,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 logger = logging.getLogger(__name__)
 
-transform = transforms.Compose([transforms.PILToTensor()])
+DEFAULT_TRANSFORM = transforms.Compose([transforms.PILToTensor()])
 
 
 class ImageDataset(torch.utils.data.Dataset):
@@ -57,7 +57,8 @@ class ImageDataset(torch.utils.data.Dataset):
             image = image
         if image.mode != "RGB":
             image = image.convert("RGB")
-        image = self.transform(image)
+        if self.transform is not None:
+            image = self.transform(image)
         return image
 
 
@@ -105,6 +106,7 @@ class Any2AnyDenseRetrievalExactSearch:
         top_k: int,
         score_function: str,
         return_sorted: bool = False,
+        transform=DEFAULT_TRANSFORM,
         **kwargs,
     ) -> dict[str, dict[str, float]]:
         if score_function not in self.score_functions:
