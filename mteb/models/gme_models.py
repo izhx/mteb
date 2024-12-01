@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import math
 from functools import partial
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 import torch
 from PIL import Image
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 EncodeTypes = Literal["query", "passage"]
 
 HF_GME_QWEN2VL_2B = "Alibaba-NLP/gme-Qwen2VL-2B"
+HF_GME_QWEN2VL_8B = "Alibaba-NLP/gme-Qwen2VL-8B"
 
 
 class GmeQwen2VL:
@@ -47,6 +48,7 @@ class GmeQwen2VL:
         )
         self.processor.tokenizer.padding_side = 'right'
         self.defualt_instruction = 'You are a helpful assistant.'
+        self.sep = ' '
 
     def forward(
         self,
@@ -61,7 +63,7 @@ class GmeQwen2VL:
         # video_grid_thw: Optional[torch.LongTensor] = None,
         pooling_mask: Optional[torch.LongTensor] = None,
         **kwargs
-    ) -> torch.FloatTensor:
+    ) -> torch.Tensor:
         if inputs_embeds is None:
             inputs_embeds = self.base.model.embed_tokens(input_ids)
             if pixel_values is not None:
@@ -129,7 +131,7 @@ class GmeQwen2VL:
             embeddings = self.forward(**inputs)
         return embeddings
 
-    def encode(self, sentences: list[str], *, prompt_name: str = None, **kwargs):
+    def encode(self, sentences: list[str], *, prompt_name=None, **kwargs):
         return self.get_fused_embeddings(texts=sentences, prompt_name=prompt_name, **kwargs)
 
     def encode_queries(self, queries: List[str], **kwargs):
@@ -184,20 +186,16 @@ class GmeQwen2VL:
             n_batch = len(image_loader)
         else:
             n_batch = len(texts) // batch_size + int(len(texts) % batch_size > 0)
+            image_loader = image_loader or [None] * n_batch
 
         all_embeddings = list()
-        it = iter(image_loader) if image_loader else range(0, n_batch * batch_size, batch_size)
+        none_batch = [None] * batch_size
         show_progress_bar = kwargs.pop('show_progress_bar', True)
         pbar = tqdm(total=n_batch, disable=not show_progress_bar, mininterval=1, miniters=10, desc='encode')
-        for n, item in enumerate(it):
-            if image_loader:
-                step = n * batch_size
-                t = texts[step: step+batch_size] if texts else [None] * batch_size
-                i = item
-            else:
-                t = texts[item: item+batch_size]
-                i = [None] * batch_size
-            embeddings = self.embed(texts=t, images=i, **kwargs)
+        for n, img_batch in zip(range(0, n_batch * batch_size, batch_size), image_loader):
+            text_batch = none_batch if texts is None else texts[n: n+batch_size]
+            img_batch = none_batch if img_batch is None else img_batch
+            embeddings = self.embed(texts=text_batch, images=img_batch, **kwargs)
             pbar.update(1)
             all_embeddings.append(embeddings.cpu())
         pbar.close()
@@ -210,6 +208,10 @@ def custom_collate_fn(batch):
 
 
 ### Copied from qwen_vl_utils.vision_process.py
+import base64
+from io import BytesIO
+import requests
+
 IMAGE_FACTOR = 28
 MIN_PIXELS = 4 * 28 * 28
 MAX_PIXELS = 16384 * 28 * 28
@@ -308,6 +310,18 @@ gme_qwen2vl_2b = ModelMeta(
         model_name=HF_GME_QWEN2VL_2B,
     ),
     name=HF_GME_QWEN2VL_2B,
+    languages=["eng_Latn"],
+    open_source=True,
+    revision="TODO",
+    release_date="2024-12-08",
+)
+
+gme_qwen2vl_8b = ModelMeta(
+    loader=partial(
+        GmeQwen2VL,
+        model_name=HF_GME_QWEN2VL_8B,
+    ),
+    name=HF_GME_QWEN2VL_8B,
     languages=["eng_Latn"],
     open_source=True,
     revision="TODO",
