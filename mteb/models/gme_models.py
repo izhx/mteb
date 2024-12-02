@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 from functools import partial
 from typing import Dict, List, Literal, Optional
 
@@ -109,14 +110,16 @@ class GmeQwen2VL:
             if not is_query or instruction is None:
                 instruction = self.defualt_instruction
             input_str = ''
-            if i is not None:
+            if i is None:
+                input_images = None  # All examples in the same batch are consistent
+            else:
                 input_str += '<|vision_start|><|image_pad|><|vision_end|>'
-                i = fetch_image(i)
+                # i = fetch_image(i)
+                input_images.append(i)
             if t is not None:
                 input_str += t
             msg = f'<|im_start|>system\n{instruction}<|im_end|>\n<|im_start|>user\n{input_str}<|im_end|>\n<|im_start|>assistant\n<|endoftext|>'
             input_texts.append(msg)
-            input_images.append(i)
 
         inputs = self.processor(
             text=input_texts,
