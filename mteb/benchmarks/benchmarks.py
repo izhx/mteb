@@ -859,3 +859,59 @@ MTEB_EU = Benchmark(
     reference=None,
     citation=None,
 )
+
+
+UMRB = Benchmark(
+    name='UMRB',
+    tasks=get_tasks(
+        tasks=[
+            # Single-modal
+            ## Text -to- text
+            'ArguAna', 'ClimateFEVER',
+            'CQADupstackAndroidRetrieval',
+            'CQADupstackEnglishRetrieval',
+            'CQADupstackGamingRetrieval',
+            'CQADupstackGisRetrieval',
+            'CQADupstackMathematicaRetrieval',
+            'CQADupstackPhysicsRetrieval',
+            'CQADupstackProgrammersRetrieval',
+            'CQADupstackStatsRetrieval',
+            'CQADupstackTexRetrieval',
+            'CQADupstackUnixRetrieval',
+            'CQADupstackWebmastersRetrieval',
+            'CQADupstackWordpressRetrieval',
+            'DBPedia', 'FEVER', 'FiQA2018', 'HotpotQA', 'MSMARCO', 'NFCorpus', 'NQ',
+            'QuoraRetrieval', 'SCIDOCS', 'SciFact', 'Touche2020', 'TRECCOVID',
+            'WebQAT2TRetrieval',
+            ## Image -to- image
+            'NIGHTSI2IRetrieval',
+            # Cross-modal
+            ## Text -to- image
+            'VisualNewsT2IRetrieval', 'Fashion200kT2IRetrieval', 'MSCOCOT2IRetrieval', 'Flickr30kT2IRetrieval',
+            ## Text -to- visual document
+            'VidoreArxivQARetrieval', 'VidoreDocVQARetrieval', 'VidoreInfoVQARetrieval',
+            'VidoreTabfquadRetrieval', 'VidoreTatdqaRetrieval', 'VidoreShiftProjectRetrieval',
+            'VidoreSyntheticDocQAAIRetrieval', 'VidoreSyntheticDocQAEnergyRetrieval',
+            'VidoreSyntheticDocQAGovernmentReportsRetrieval', 'VidoreSyntheticDocQAHealthcareIndustryRetrieval',
+            ## Image -to- text
+            'VisualNewsI2TRetrieval', 'Fashion200kI2TRetrieval', 'MSCOCOI2TRetrieval', 'Flickr30kI2TRetrieval',
+            # Fused-modal
+            ## Text -to- image,text
+            'WebQAT2ITRetrieval', 'EDIST2ITRetrieval',
+            ## Image,text -to- text
+            'OVENIT2TRetrieval', 'InfoSeekIT2TRetrieval',
+            'ReMuQIT2TRetrieval', 'OKVQAIT2TRetrieval', 'LLaVAIT2TRetrieval',
+            ## Image,text -to- image
+            'FashionIQIT2IRetrieval', 'CIRRIT2IRetrieval',
+            ## Text,image -to- text,image
+            'OVENIT2ITRetrieval', 'InfoSeekIT2ITRetrieval', 'EncyclopediaVQAIT2ITRetrieval'
+    ]),
+    description="UMRB: A Universal Multimodal Retrieval Benchmark",
+    reference="https://arxiv.org/abs/2412.xxxxx",
+    citation="""@article{zhang2024gme,
+    title={GME: Improving Universal Multimodal Retrieval by Multimodal LLMs}, 
+    author={Zhang, Xin and Zhang, Yanzhao and Xie, Wen and Li, Mingxin and Dai, Ziqi and Long, Dingkun and Xie, Pengjun and Zhang, Meishan and Li, Wenjie and Zhang, Min},
+    year={2024},
+    url={https://arxiv.org/abs/2412.xxxxx}, 
+}""",
+)
