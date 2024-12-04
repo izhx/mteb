@@ -114,7 +114,7 @@ class GmeQwen2VL:
                 input_images = None  # All examples in the same batch are consistent
             else:
                 input_str += '<|vision_start|><|image_pad|><|vision_end|>'
-                # i = fetch_image(i)
+                i = fetch_image(i)
                 input_images.append(i)
             if t is not None:
                 input_str += t
