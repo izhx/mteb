@@ -248,10 +248,6 @@ def smart_resize(
 
     3. The aspect ratio of the image is maintained as closely as possible.
     """
-    if max(height, width) / min(height, width) > MAX_RATIO:
-        raise ValueError(
-            f"absolute aspect ratio must be smaller than {MAX_RATIO}, got {max(height, width) / min(height, width)}"
-        )
     h_bar = max(factor, round_by_factor(height, factor))
     w_bar = max(factor, round_by_factor(width, factor))
     if h_bar * w_bar > max_pixels:
@@ -262,6 +258,15 @@ def smart_resize(
         beta = math.sqrt(min_pixels / (height * width))
         h_bar = ceil_by_factor(height * beta, factor)
         w_bar = ceil_by_factor(width * beta, factor)
+
+    if max(h_bar, w_bar) / min(h_bar, w_bar) > MAX_RATIO:
+        logger.warning(
+            f"Absolute aspect ratio must be smaller than {MAX_RATIO}, got {max(h_bar, w_bar) / min(h_bar, w_bar)}"
+        )
+        if h_bar > w_bar:
+            h_bar = w_bar * MAX_RATIO
+        else:
+            w_bar = h_bar * MAX_RATIO
     return h_bar, w_bar
 
 
@@ -316,7 +321,7 @@ gme_qwen2vl_2b = ModelMeta(
     languages=["eng_Latn"],
     open_source=True,
     revision="TODO",
-    release_date="2024-12-08",
+    release_date="2024-12-16",
 )
 
 gme_qwen2vl_8b = ModelMeta(
@@ -328,5 +333,5 @@ gme_qwen2vl_8b = ModelMeta(
     languages=["eng_Latn"],
     open_source=True,
     revision="TODO",
-    release_date="2024-12-08",
+    release_date="2024-12-16",
 )
