@@ -123,7 +123,7 @@ class Any2AnyDenseRetrievalExactSearch:
         if q_modality == "text":
             query_texts = queries["text"]
             query_embeddings = self.model.get_text_embeddings(
-                texts=query_texts, batch_size=self.encode_kwargs["batch_size"]
+                texts=query_texts, **self.encode_kwargs, is_query=True,
             )
         else:
             queries_dataset = ImageDataset(
@@ -139,14 +139,16 @@ class Any2AnyDenseRetrievalExactSearch:
             if q_modality == "image":
                 query_embeddings = self.model.get_image_embeddings(
                     images=query_image_dataloader,
-                    batch_size=self.encode_kwargs["batch_size"],
+                    **self.encode_kwargs,
+                    is_query=True,
                 )
             elif q_modality == "image,text":
                 query_texts = queries["text"]
                 query_embeddings = self.model.get_fused_embeddings(
                     texts=query_texts,
                     images=query_image_dataloader,
-                    batch_size=self.encode_kwargs["batch_size"],
+                    **self.encode_kwargs,
+                    is_query=True,
                 )
             else:
                 raise ValueError(f"Unsupported modality: {q_modality}")
@@ -173,7 +175,7 @@ class Any2AnyDenseRetrievalExactSearch:
             if corpus_modality == "text":
                 corpus_texts = chunk["text"]
                 sub_corpus_embeddings = self.model.get_text_embeddings(
-                    texts=corpus_texts, batch_size=self.encode_kwargs["batch_size"]
+                    texts=corpus_texts, **self.encode_kwargs, is_query=False,
                 )
             else:
                 corpus_dataset = ImageDataset(
@@ -189,14 +191,16 @@ class Any2AnyDenseRetrievalExactSearch:
                 if corpus_modality == "image":
                     sub_corpus_embeddings = self.model.get_image_embeddings(
                         images=corpus_image_dataloader,
-                        batch_size=self.encode_kwargs["batch_size"],
+                        **self.encode_kwargs,
+                        is_query=False,
                     )
                 elif corpus_modality == "image,text":
                     corpus_texts = chunk["text"]
                     sub_corpus_embeddings = self.model.get_fused_embeddings(
                         texts=corpus_texts,
                         images=corpus_image_dataloader,
-                        batch_size=self.encode_kwargs["batch_size"],
+                        **self.encode_kwargs,
+                        is_query=False,
                     )
                 else:
                     raise ValueError(f"Unsupported modality: {corpus_modality}")
